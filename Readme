@@ -1,0 +1,111 @@
+Garrett Cleary
+Nov 18, 2025
+
+This is my updated interpretation of PDT simple from Norman Packard. My experiment script can be found "experiment_pdt_GC".
+
+I decided to use the TensorFlow/Keras neural network, and my implementation differs slightly from Amorenet in data preprocessing.  The R Amorenet package manually computes mean/sd in loops, while I used Scikit-learn standardScaler. Both packages use mean squared error as the loss function.
+
+Network Architecture:
+Sequential model (layers stacked linearly)
+Tanh activation functions (hyperbolic tangent)
+Fully connected (Dense) layers
+Customizable layer sizes via layers parameter
+
+Training Method:
+Optimizer: SGD (Stochastic Gradient Descent)
+Learning rate: 0.01
+Momentum: 0.5
+Loss function: Mean Squared Error (MSE)
+
+
+Original
+--------------------------------------------------------------------------------
+NP
+Nov 27, 2016
+Washington DC
+
+This directory contains files for a simple version of PDT
+It was originally developed for a course at a workshop in San Candido
+for the COBRA EU project.
+
+It illustrates a basic approach of encapsulating functionality in one
+of the R implementations of objective programming: defining a class by
+creating a list with a "class" attribute, and using R's dispatch
+mechanism to define methods for that class.
+
+A map of the classes defined here are:
+
+Data generators: These define a virtual response surface, and have a
+method, sampleData(points), that samples data from the experimental
+space using the virtual response surface.  Two classes of surface are
+implemented:
+
+1. superpositions of Gaussians (in datGauss.R)
+2. superpositions of Gaussians with some of them having cliffs (in cliffGauss.R)
+
+scanData.R contains a function that creates a graph of the response
+surface.  It tries its best when d>2, to make a 2-d slice and graph
+response across that slice.
+
+Data samplers: These sample the experimental space, possibly with
+reference to a model, e.g. to sample near high fitness parts of the
+space.  These are in choosePoints.R
+
+Models: For use in this framework, models must be packaged to have a
+predict method, as most models have in R.  Turns out that the
+multi-layer neural network package, AMORE, does not have such a
+method, so a wrapper class, "amorenet" has been created with a predict
+method.  In addition, model classes that handle data normalization
+have been created: amorenetNorm and nnetNorm (a normalized version of
+R's nnet), with their respective predict methods.  For the Norm model
+classes, the class instances contain all the parameters to keep track
+of the normalization, using these parameters in the predict methods.
+These model classes are all in amorenet.R
+
+An example of using these componenets in a PDT loop is given in pdt.R.
+This uses a model evaluation function, testModel(), that evaluates the
+model, and gives various graphics that are most illuminating when the
+experimental space is 2 dimensional (just as a pedagogical example).
+
+This version of PDT is 'simple', primarily in that it does no bootstrapping.
+
+It should be clear how to put the PDT loop within another loop that
+could compute a PDT result as meta-parameters are varied, either in
+the data generators or the model meta-parameters.  It should also be
+clear how to use these functional components to make a less simple
+version of PDT that does boot-strapping.
+
+Example of use of the components :
+
+(from pdt.R comments... )
+Usage:
+
+source('pdt.R')
+datgen = rancliff() ### GGG create cliffGauss object (container of Gaussian parameters)
+mychooser = chooseRandFit ### GGG: list of chooser parameter defaults
+mychooserparams = list(fac=100) # (fac determines number of samples taken to sample from model, N=fac*Npop) #GGG: replacing/adding 'fac' to mychooser list 
+mymodel=amorenetNorm
+mymodelparams = list(layers=c(2,10,10,1),maxit=500)           #train, targ will be added
+result = dopdt(mymodel,mymodelparams,mychooser,mychooserparams,datgen,Npop=10) ### observed response, model performance, etc
+
+
+
+Example: Loop over increasingly complex landscape
+
+source('pdt.R')
+mychooser = chooseRandFit
+mychooserparams = list(fac=100) # (fac determines number of samples taken to sample from model, N=fac*Npop)
+mymodel=amorenetNorm
+mymodelparams = list(layers=c(2,10,10,1),maxit=500)           #train, targ will be added
+
+results = list()
+cur = 1
+for(numpeaks in 4:20){
+    datgen = rancliff(N=numpeaks)
+    pdtresult = pdt(mymodel,mymodelparams,mychooser,mychooserparams,datgen,Npop=10,doplot=F)
+    result[[cur]] = list(numPeaks=numpeaks,datgen=datgen,pdtresult=pdtresult)
+    cur = cur+1
+}
+
+
+         
